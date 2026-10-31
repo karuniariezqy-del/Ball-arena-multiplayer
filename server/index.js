@@ -6,7 +6,7 @@ const express = require('express');
 const { Server } = require('socket.io');
 
 const {
-  db, stmts, data: _unused, DB_PATH, UPLOAD_DIR, hashPassword, verifyPassword,
+  db, stmts, DB_PATH, UPLOAD_DIR, hashPassword, verifyPassword,
   seedOwner, publicUser, applyRewards, ensureSkinRow, cleanupSessions,
 } = require('./db');
 const auth = require('./auth');
@@ -211,8 +211,6 @@ app.post('/api/login', (req, res) => {
   if (result.error) return res.status(result.banned ? 403 : 401).json({ error: result.error });
   const token = auth.createSession(result.user.id);
   auth.setSessionCookie(res, token);
-  db.prepare('UPDATE sessions SET expires_at = ? WHERE token_hash = ?')
-    .run(Date.now() + auth.SESSION_TTL_MS, auth.hashToken(token));
   res.json({ user: publicUser(result.user), message: 'Welcome back, legend.' });
 });
 
@@ -361,6 +359,7 @@ app.post('/api/owner/grant', auth.requireOwner, (req, res) => {
     const cur = publicUser(target);
     for (let i = 0; i < levels; i += 1) expTotal += expForNextLevel(cur.level + i);
   }
+  expTotal = Math.min(200000, expTotal);
   if (skinId && !getSkin(skinId)) return res.status(404).json({ error: 'Unknown skin.' });
   try {
     if (coins || expTotal) {

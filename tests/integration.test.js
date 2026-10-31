@@ -275,7 +275,7 @@ async function main() {
 
   await step('equipping a non-owned skin is rejected; owned skin equips', async () => {
     const denied = await alice.post('/api/profile/skin', { skinId: 'skin_040' });
-    assert.equal(denied.status, 400);
+    assert.equal(denied.status, 403, 'non-owned skin must be forbidden');
     const equipped = await alice.post('/api/profile/skin', { skinId: 'skin_005' });
     assert.equal(equipped.status, 200);
     assert.equal(equipped.data.user.equippedSkin, 'skin_005');
@@ -293,10 +293,18 @@ async function main() {
 
   await step('unauthenticated clients cannot join an arena', async () => {
     const anon = new Client();
-    const socket = await connectSocket(anon);
-    const res = await emitAck(socket, 'arena:join', { mode: 'multi' });
-    socket.close();
-    assert.ok(res && res.error, 'expected an auth error');
+    let rejected = null;
+    const socket = await connectSocket(anon).catch((err) => {
+      rejected = err;
+      return null;
+    });
+    if (socket) {
+      const res = await emitAck(socket, 'arena:join', { mode: 'multi' }).catch(() => null);
+      socket.close();
+      rejected = rejected || (res && res.error ? new Error(res.error) : null);
+    }
+    assert.ok(rejected, 'anonymous socket must be rejected');
+    assert.match(String(rejected.message), /unauth/i);
   });
 
   await step('two authenticated players sync in the same multiplayer arena', async () => {
@@ -381,7 +389,8 @@ async function main() {
     const ban = await owner.post('/api/owner/ban', { username: 'bob_baller', hours: 1, reason: 'test ban' });
     assert.equal(ban.status, 200, JSON.stringify(ban.data));
     const bannedMe = await bob.get('/api/me');
-    assert.equal(bannedMe.data.user.isBanned, true);
+    // Banning invalidates every session, so /api/me must return no user.
+    assert.equal(bannedMe.data.user, null, 'banned session is invalidated');
     const blockedLogin = await new Client().post('/api/login', { username: 'bob_baller', password: 'bobsecret12' });
     assert.equal(blockedLogin.status, 403, 'banned user cannot log in');
 
@@ -393,7 +402,7 @@ async function main() {
 
   await step('owner password change requires current password and enforces length', async () => {
     const wrong = await owner.post('/api/owner/password', { currentPassword: 'nope', newPassword: 'averylongpassword' });
-    assert.equal(wrong.status, 400);
+    assert.equal(wrong.status, 401, 'wrong current password is unauthorized');
     const short = await owner.post('/api/owner/password', { currentPassword: OWNER_PASS, newPassword: 'short' });
     assert.equal(short.status, 400);
   });

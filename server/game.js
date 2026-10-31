@@ -985,6 +985,11 @@ class GameServer {
     this.queue = this.queue.filter((q) => q !== socket && q !== opponent.socket && q.socket !== socket && q.socket !== opponent.socket);
     const room = new Room('duel', { id: `duel:${crypto.randomBytes(4).toString('hex')}` });
     this.rooms.set(room.id, room);
+    // Both sides get the matched queue event (the player who was already waiting
+    // otherwise only receives `duel:found`, which desyncs client state machines).
+    for (const entry of [socket, opponent.socket]) {
+      entry.emit('duel:queue', { status: 'matched', queueSize: 0, roomId: room.id });
+    }
     const joinOne = (entry) => {
       const res = room.addPlayer(entry.socket, entry.user);
       if (res.error) return;

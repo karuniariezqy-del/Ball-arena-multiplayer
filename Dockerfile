@@ -13,7 +13,10 @@ WORKDIR /app
 RUN apk add --no-cache python3 make g++
 
 COPY package.json package-lock.json ./
+# Build the addon from source (musl has no prebuilt binary) and prove it loads.
 RUN npm ci --omit=dev --build-from-source \
+ && (node -e "const D=require('better-sqlite3'); new D(':memory:').prepare('select 1').get()" \
+     || npm rebuild better-sqlite3 --build-from-source) \
  && npm cache clean --force \
  && rm -rf /root/.npm /root/.node-gyp /tmp/*
 

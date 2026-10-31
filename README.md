@@ -78,8 +78,13 @@ docker build -t ball-arena-legends .
 docker run -p 3000:3000 -v ball-arena-data:/app/data ball-arena-legends
 ```
 
-The image installs `python3 make g++` so `better-sqlite3` can compile, exposes `3000`, sets
-`DATA_DIR=/app/data` and ships a container healthcheck against `/api/health`.
+The image is a two-stage Alpine build: the first stage installs `python3 make g++` so `better-sqlite3`
+compiles its native addon against musl, and the final stage ships only `libstdc++` plus
+`node_modules`, `server` and `public`. It exposes `3000`, sets `DATA_DIR=/app/data`, runs as the
+non-root `node` user and ships a container healthcheck against `/api/health`.
+Alpine is used instead of a Debian base because the Debian 12 glibc/gnutls packages used by the
+official `node:*-bookworm-slim` images are flagged as unfixed high/critical advisories, which blocks
+the deployment image security gate.
 
 Deployment checklist:
 

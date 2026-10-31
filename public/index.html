@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#05060f" />
+<title>Ball Arena Legends — 2D Multiplayer Ball Arena</title>
+<meta name="description" content="Ball Arena Legends: a real-time 2D multiplayer ball arena. Fight enemies, collect coins and flags, defeat bosses and unlock legendary skins." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='28' fill='%237c3aed'/%3E%3Ccircle cx='32' cy='32' r='17' fill='%2322d3ee'/%3E%3Ccircle cx='26' cy='25' r='6' fill='%23fff' opacity='.85'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+<div class="bg-fx" aria-hidden="true">
+  <div class="bg-orb o1"></div><div class="bg-orb o2"></div><div class="bg-orb o3"></div>
+  <div class="bg-grid"></div>
+</div>
+
+<canvas id="fxCanvas" class="fx-canvas" aria-hidden="true"></canvas>
+
+<!-- ================= INTRO ================= -->
+<section id="screen-intro" class="screen active intro-screen">
+  <div class="intro-wrap">
+    <div class="logo-mark" aria-hidden="true">
+      <canvas id="logoBall" width="220" height="220"></canvas>
+    </div>
+    <h1 class="logo-title">BALL<span>ARENA</span>LEGENDS</h1>
+    <p class="logo-sub">A real-time 2D multiplayer ball arena. Roll in, outgun the swarm, take the flags and break the bosses.</p>
+    <div class="intro-actions">
+      <button id="btnStart" class="btn btn-primary btn-xl">ENTER THE ARENA</button>
+      <button id="btnHowTo" class="btn btn-ghost btn-xl">HOW TO PLAY</button>
+    </div>
+    <div class="intro-stats">
+      <div><strong id="introOnline">0</strong><span>legends online</span></div>
+      <div><strong>96</strong><span>skins to master</span></div>
+      <div><strong>8</strong><span>bosses to break</span></div>
+      <div><strong>4</strong><span>game modes</span></div>
+    </div>
+    <p class="intro-foot">Real servers · persistent progression · created by <b>riezqy</b></p>
+  </div>
+</section>
+
+<!-- ================= AUTH ================= -->
+<section id="screen-auth" class="screen auth-screen">
+  <div class="auth-card">
+    <a class="auth-home" href="#" id="authHome">← back</a>
+    <div class="auth-brand"><span class="dot"></span> BALL ARENA LEGENDS</div>
+    <div class="tabs">
+      <button class="tab active" id="tabLogin" type="button">LOGIN</button>
+      <button class="tab" id="tabRegister" type="button">REGISTER</button>
+    </div>
+    <form id="loginForm" class="auth-form active" autocomplete="on">
+      <label for="loginUser">Username</label>
+      <input id="loginUser" name="username" type="text" autocomplete="username" maxlength="16" placeholder="your legend name" required />
+      <label for="loginPass">Password</label>
+      <div class="pass-wrap">
+        <input id="loginPass" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required />
+        <button type="button" class="eye" data-target="loginPass" aria-label="Show password">👁</button>
+      </div>
+      <p class="form-error" id="loginError" role="alert"></p>
+      <button class="btn btn-primary btn-block" type="submit" id="loginSubmit">LOG IN</button>
+      <p class="switch-line">No account? <button type="button" class="link" data-goto-register>Create one</button></p>
+    </form>
+    <form id="registerForm" class="auth-form" autocomplete="on">
+      <label for="regUser">Username</label>
+      <input id="regUser" name="username" type="text" autocomplete="username" minlength="3" maxlength="16" pattern="[A-Za-z0-9_]{3,16}" placeholder="3–16 letters, numbers, _" required />
+      <label for="regPass">Password</label>
+      <div class="pass-wrap">
+        <input id="regPass" name="password" type="password" autocomplete="new-password" minlength="8" placeholder="at least 8 characters" required />
+        <button type="button" class="eye" data-target="regPass" aria-label="Show password">👁</button>
+      </div>
+      <label for="regConfirm">Confirm password</label>
+      <div class="pass-wrap">
+        <input id="regConfirm" name="confirmPassword" type="password" autocomplete="new-password" minlength="8" placeholder="repeat password" required />
+        <button type="button" class="eye" data-target="regConfirm" aria-label="Show password">👁</button>
+      </div>
+      <p class="form-error" id="regError" role="alert"></p>
+      <button class="btn btn-primary btn-block" type="submit" id="regSubmit">CREATE LEGEND</button>
+      <p class="switch-line">Already registered? <button type="button" class="link" data-goto-login>Log in</button></p>
+    </form>
+    <p class="auth-note">Passwords are hashed with scrypt on the server. Accounts always start as PLAYER.</p>
+  </div>
+</section>
+
+<!-- ================= APP SHELL ================= -->
+<div id="appShell" class="app-shell">
+  <header id="appbar" class="appbar">
+    <button id="navBack" class="icon-btn" aria-label="Back">←</button>
+    <div class="appbar-title" id="navTitle">LOBBY</div>
+    <div class="appbar-right">
+      <div class="chip" title="Coins"><span>🪙</span><b id="chipCoins">0</b></div>
+      <div class="chip" title="Flags"><span>🚩</span><b id="chipFlags">0</b></div>
+      <button class="player-chip" id="playerChip">
+        <span class="pc-avatar" id="chipAvatar">🔵</span>
+        <span class="pc-meta"><b id="chipName">player</b><i>LV <span id="chipLevel">1</span></i></span>
+      </button>
+      <button id="btnLogout" class="icon-btn" title="Log out">⏻</button>
+    </div>
+  </header>
+
+  <!-- LOBBY -->
+  <main id="screen-lobby" class="screen page active">
+    <div class="lobby-hero">
+      <div class="hero-ball"><canvas id="playerBall" width="230" height="230"></canvas></div>
+      <div class="hero-info">
+        <div class="eyebrow">WELCOME BACK, LEGEND</div>
+        <h2 id="lobbyName">player</h2>
+        <div class="hero-tags">
+          <span class="pill" id="lobbySkinName">Pebble</span>
+          <span class="pill" id="lobbyRarity">COMMON</span>
+          <span class="pill">ROLE <b id="lobbyRole">PLAYER</b></span>
+        </div>
+        <div class="exp-block">
+          <div class="exp-labels"><span>LEVEL <b id="lobbyLevel">1</b></span><span id="expText">0 / 100 EXP</span></div>
+          <div class="exp-track"><div class="exp-fill" id="expBar"></div></div>
+        </div>
+        <div class="hero-stats">
+          <div><span>🪙 Coins</span><b id="lobbyCoins">0</b></div>
+          <div><span>🚩 Flags</span><b id="lobbyFlags">0</b></div>
+          <div><span>🏆 Wins</span><b id="lobbyWins">0</b></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-head"><h3>PLAY</h3><span class="muted">Choose your battle</span></div>
+    <div class="mode-grid">
+      <button class="mode-card" data-mode="multi">
+        <div class="mc-icon">🌐</div>
+        <div class="mc-body"><h4>MULTIPLAYER</h4><p>Live shared arena. Real players, synchronized in real time.</p></div>
+        <span class="mc-badge" id="multiOnline">0 online</span>
+      </button>
+      <button class="mode-card" data-mode="solo">
+        <div class="mc-icon">🎯</div>
+        <div class="mc-body"><h4>SOLO</h4><p>Private arena against escalating enemy balls and bosses.</p></div>
+        <span class="mc-badge">solo run</span>
+      </button>
+      <button class="mode-card" data-mode="duel">
+        <div class="mc-icon">⚔️</div>
+        <div class="mc-body"><h4>1 VS 1</h4><p>Matchmaking duel. First to 3 knockouts wins the purse.</p></div>
+        <span class="mc-badge">ranked</span>
+      </button>
+      <button class="mode-card" data-mode="boss">
+        <div class="mc-icon">👑</div>
+        <div class="mc-body"><h4>BOSS RAIDS</h4><p>Spend flags, break a boss, claim exclusive skins.</p></div>
+        <span class="mc-badge">8 bosses</span>
+      </button>
+    </div>
+
+    <div class="split">
+      <div class="panel">
+        <div class="panel-head"><h3>TOP LEGENDS</h3><button class="link" data-nav="profile">Your profile</button></div>
+        <div id="lbList" class="lb-list"><p class="muted">Loading leaderboard…</p></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>ONLINE NOW</h3><span class="live-dot"></span></div>
+        <div id="onlineList" class="online-list"><p class="muted">Nobody online yet.</p></div>
+        <button class="btn btn-ghost btn-block" data-nav="chat">OPEN GLOBAL CHAT</button>
+      </div>
+    </div>
+    <p class="foot-note">Movement: WASD / arrows · Dash: Space · Mobile: virtual joystick + dash button</p>
+  </main>
+
+  <!-- MODES -->
+  <main id="screen-modes" class="screen page">
+    <div class="section-head"><h3>GAME MODES</h3><span class="muted">Four ways to become a legend</span></div>
+    <div class="mode-grid wide">
+      <div class="mode-card static">
+        <div class="mc-icon">🌐</div><div class="mc-body"><h4>MULTIPLAYER ARENA</h4>
+          <p>Every online player in one shared room (up to 12). Real-time movement sync, shared enemies, coins and flags. Rewards are flushed to the database every 20 seconds by the server.</p>
+          <button class="btn btn-primary" data-mode="multi">JOIN ARENA</button></div>
+      </div>
+      <div class="mode-card static">
+        <div class="mc-icon">🎯</div><div class="mc-body"><h4>SOLO RUN</h4>
+          <p>A private instance. Enemy balls scale with your level, and everything you collect is yours. Perfect for learning the dash and farming flags.</p>
+          <button class="btn btn-primary" data-mode="solo">START SOLO</button></div>
+      </div>
+      <div class="mode-card static">
+        <div class="mc-icon">⚔️</div><div class="mc-body"><h4>1 VS 1 DUEL</h4>
+          <p>Queue against another online player. First to 3 knockouts or highest score after 120 seconds. Winner takes 140 coins + 220 EXP, loser still earns.</p>
+          <button class="btn btn-primary" id="btnDuelQueue">FIND MATCH</button></div>
+      </div>
+      <div class="mode-card static">
+        <div class="mc-icon">👑</div><div class="mc-body"><h4>BOSS RAID</h4>
+          <p>Bosses demand levels and flags. Each of the 8 bosses has unique attacks, HP, damage and a signature grant-only skin.</p>
+          <button class="btn btn-primary" data-nav="bosses">VIEW BOSSES</button></div>
+      </div>
+    </div>
+    <div class="panel duel-panel">
+      <h3>DUEL STATUS</h3>
+      <p id="duelStatusText" class="muted">Not in queue.</p>
+      <button class="btn btn-ghost" id="btnDuelCancel">CANCEL QUEUE</button>
+    </div>
+  </main>
+
+  <!-- BOSSES -->
+  <main id="screen-bosses" class="screen page">
+    <div class="section-head"><h3>BOSS SELECTION</h3><span class="muted" id="bossFlagsLabel">Flags: 0</span></div>
+    <div id="bossList" class="boss-grid"></div>
+  </main>
+
+  <!-- SKINS -->
+  <main id="screen-skins" class="screen page">
+    <div class="section-head"><h3>SKIN INVENTORY</h3><span class="muted" id="skinCount">0 / 96 owned</span></div>
+    <div class="skin-filters" id="skinFilters"></div>
+    <div id="skinGrid" class="skin-grid"></div>
+  </main>
+
+  <!-- PROFILE -->
+  <main id="screen-profile" class="screen page">
+    <div class="profile-head panel">
+      <div class="profile-avatar" id="profileAvatar">🔵</div>
+      <div class="profile-id">
+        <h2 id="profileName">player</h2>
+        <p class="muted" id="profileMeta">Member since —</p>
+        <div class="hero-tags"><span class="pill" id="profileRole">PLAYER</span><span class="pill" id="profileSkin">Pebble</span></div>
+      </div>
+      <div class="profile-mainball"><canvas id="profileBall" width="150" height="150"></canvas></div>
+    </div>
+    <div class="grid-2">
+      <div class="panel">
+        <h3>PROFILE DETAILS</h3>
+        <label for="bioInput">Biography</label>
+        <textarea id="bioInput" maxlength="240" rows="3" placeholder="Tell the arena who you are…"></textarea>
+        <div class="row">
+          <label class="upload-btn">Upload photo<input type="file" id="avatarFile" accept="image/png,image/jpeg,image/webp" hidden /></label>
+          <button class="btn btn-ghost" id="bioSave">SAVE PROFILE</button>
+        </div>
+        <p class="hint">JPG / PNG / WEBP up to 400KB. Uploads are validated server-side.</p>
+      </div>
+      <div class="panel">
+        <h3>CAREER STATS</h3>
+        <div id="profileStats" class="stat-grid"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>OWNED SKINS</h3><span class="muted" id="profileSkinCount">0</span></div>
+      <div id="profileSkins" class="skin-strip"></div>
+    </div>
+  </main>
+
+  <!-- CHAT -->
+  <main id="screen-chat" class="screen page chat-page">
+    <div class="panel chat-panel">
+      <div class="panel-head">
+        <h3 id="chatRoomLabel">GLOBAL CHAT</h3>
+        <span class="muted"><span class="live-dot"></span><span id="chatOnline">0 online</span></span>
+      </div>
+      <div id="chatMessages" class="chat-messages" aria-live="polite"></div>
+      <div class="emoji-row" id="chatEmoji">
+        <button type="button">😀</button><button type="button">😂</button><button type="button">🔥</button>
+        <button type="button">👑</button><button type="button">💀</button><button type="button">🚩</button>
+        <button type="button">🪙</button><button type="button">⚔️</button><button type="button">🎯</button>
+        <button type="button">😎</button><button type="button">🤝</button><button type="button">✨</button>
+      </div>
+      <div class="chat-tools">
+        <button class="btn btn-ghost small" id="ownerImageBtn" hidden>📷 SEND IMAGE (OWNER)</button>
+        <span id="chatRoomHint" class="muted"></span>
+      </div>
+      <form id="chatForm" class="chat-form">
+        <input id="chatInput" maxlength="300" placeholder="Message the arena…" autocomplete="off" />
+        <button class="btn btn-primary" type="submit">SEND</button>
+      </form>
+    </div>
+    <div class="panel chat-side">
+      <h3>RULES</h3>
+      <ul class="rules">
+        <li>Respect every player.</li>
+        <li>Offensive words are filtered to <b class="bad">$#@%$</b>.</li>
+        <li>Tap the ⚠ on a message to report it.</li>
+        <li>Owner decisions are final.</li>
+      </ul>
+      <h3>ROOM CHAT</h3>
+      <p class="muted">While in the arena, open the in-game chat to talk to your room only.</p>
+    </div>
+  </main>
+
+  <!-- OWNER -->
+  <main id="screen-owner" class="screen page">
+    <div class="section-head"><h3>OWNER DASHBOARD</h3><span class="pill gold">SERVER-VERIFIED OWNER</span></div>
+    <div id="ownerStats" class="stat-grid owner-stats"></div>
+    <div class="owner-tabs">
+      <button class="tab active" data-owner-tab="overview">REPORTS</button>
+      <button class="tab" data-owner-tab="grant">GRANT</button>
+      <button class="tab" data-owner-tab="moderation">MODERATION</button>
+      <button class="tab" data-owner-tab="players">PLAYERS</button>
+      <button class="tab" data-owner-tab="security">SECURITY</button>
+    </div>
+    <div class="owner-pane active" data-owner-pane="overview">
+      <div class="grid-2">
+        <div class="panel">
+          <h3>OPEN REPORTS</h3>
+          <div id="ownerReports" class="report-list"><p class="muted">No reports.</p></div>
+        </div>
+        <div class="panel">
+          <h3>ONLINE PLAYERS</h3>
+          <div id="ownerOnline" class="online-list"></div>
+          <h3 style="margin-top:18px">ROOMS</h3>
+          <div id="ownerRooms" class="room-list"></div>
+        </div>
+      </div>
+    </div>
+    <div class="owner-pane" data-owner-pane="grant">
+      <div class="panel">
+        <h3>GRANT REWARDS</h3>
+        <form id="grantForm" class="form-grid">
+          <label>Player username<input id="grantUser" required placeholder="username" /></label>
+          <label>Coins<input id="grantCoins" type="number" min="0" value="0" /></label>
+          <label>EXP<input id="grantExp" type="number" min="0" value="0" /></label>
+          <label>Levels<input id="grantLevels" type="number" min="0" value="0" /></label>
+          <label>Skin<select id="grantSkin"><option value="">— none —</option></select></label>
+          <label class="check"><input id="grantGodmax" type="checkbox" /> Grant GODMAX 👑</label>
+          <button class="btn btn-primary" type="submit">APPLY GRANT</button>
+        </form>
+      </div>
+    </div>
+    <div class="owner-pane" data-owner-pane="moderation">
+      <div class="grid-2">
+        <div class="panel">
+          <h3>BAN PLAYER</h3>
+          <form id="banForm" class="form-grid">
+            <label>Username<input id="banUser" required placeholder="username" /></label>
+            <label>Duration (hours)<input id="banHours" type="number" min="1" max="8760" value="24" /></label>
+            <label>Reason<input id="banReason" maxlength="160" placeholder="reason" /></label>
+            <button class="btn btn-danger" type="submit">BAN</button>
+          </form>
+          <h3 style="margin-top:20px">UNBAN PLAYER</h3>
+          <form id="unbanForm" class="row">
+            <input id="unbanUser" placeholder="username" required />
+            <button class="btn btn-ghost" type="submit">UNBAN</button>
+          </form>
+        </div>
+        <div class="panel">
+          <h3>GLOBAL CHAT MODERATION</h3>
+          <div id="ownerMessages" class="mod-messages"></div>
+        </div>
+      </div>
+    </div>
+    <div class="owner-pane" data-owner-pane="players">
+      <div class="panel">
+        <div class="panel-head"><h3>PLAYERS</h3>
+          <form id="playerSearch" class="row"><input id="playerQuery" placeholder="search username" /><button class="btn btn-ghost small">SEARCH</button></form>
+        </div>
+        <div class="table-wrap"><table class="data-table"><thead><tr><th>Player</th><th>Role</th><th>LV</th><th>EXP</th><th>Coins</th><th>Flags</th><th>W/L</th><th>Status</th><th></th></tr></thead><tbody id="ownerPlayers"></tbody></table></div>
+      </div>
+    </div>
+    <div class="owner-pane" data-owner-pane="security">
+      <div class="panel">
+        <h3>CHANGE OWNER PASSWORD</h3>
+        <form id="ownerPassForm" class="form-grid">
+          <label>Current password<input id="ownerCurrentPass" type="password" required autocomplete="current-password" /></label>
+          <label>New password<input id="ownerNewPass" type="password" required minlength="10" autocomplete="new-password" /></label>
+          <button class="btn btn-primary" type="submit">UPDATE PASSWORD</button>
+        </form>
+        <p class="hint">Stored as a scrypt hash. All other sessions are revoked after the change.</p>
+      </div>
+      <div class="panel">
+        <h3>SECURITY MODEL</h3>
+        <ul class="rules">
+          <li>Registration always assigns <b>PLAYER</b>; the OWNER role is only seeded server-side.</li>
+          <li>All rewards, grants, bans and moderation run through server-side authorization checks.</li>
+          <li>Coins / EXP / flags are capped and written to an append-only reward ledger.</li>
+          <li>Chat images are MIME + magic-byte validated and size-limited.</li>
+          <li>Sessions are HttpOnly, SameSite=Lax and stored as SHA-256 token hashes.</li>
+        </ul>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ================= ARENA ================= -->
+<section id="screen-arena" class="screen arena-screen">
+  <canvas id="gameCanvas"></canvas>
+  <div class="arena-ui" id="arenaUI">
+    <div class="arena-top">
+      <button class="icon-btn glass" id="btnArenaBack" aria-label="Leave arena">←</button>
+      <div class="arena-bars">
+        <div class="hp-wrap"><div class="hp-fill" id="hpFill"></div><span id="hpText">100 / 100</span></div>
+        <div class="run-stats">
+          <span>🪙 <b id="runCoins">0</b></span>
+          <span>✨ <b id="runExp">0</b></span>
+          <span>🚩 <b id="runFlags">0</b></span>
+          <span>💀 <b id="runKills">0</b></span>
+        </div>
+      </div>
+      <div class="arena-right">
+        <span class="pill glass" id="arenaModeLabel">MULTIPLAYER</span>
+        <button class="icon-btn glass" id="btnArenaChat" aria-label="Room chat">💬</button>
+      </div>
+    </div>
+
+    <div class="boss-hud" id="bossHud" hidden>
+      <div class="boss-name"><span id="bossName">BOSS</span><i id="bossTitle"></i><b id="bossHpText"></b></div>
+      <div class="boss-track"><div class="boss-fill" id="bossHpFill"></div></div>
+    </div>
+
+    <div class="duel-hud" id="duelHud" hidden>
+      <div class="duel-score"><span id="duelYou">YOU 0</span><i>FIRST TO 3</i><span id="duelFoe">FOE 0</span></div>
+      <div class="duel-timer" id="duelTimer">120</div>
+    </div>
+
+    <div class="feed" id="feed"></div>
+    <div class="scoreboard" id="scoreboard" hidden></div>
+    <div class="respawn-veil" id="respawnVeil" hidden><div><p>KNOCKED OUT</p><span id="respawnIn">4</span><small>respawning…</small></div></div>
+
+    <div class="room-chat" id="roomChat" hidden>
+      <div class="rc-head"><b>ROOM CHAT</b><button class="icon-btn" id="rcClose">✕</button></div>
+      <div class="rc-messages" id="rcMessages"></div>
+      <form id="rcForm"><input id="rcInput" maxlength="300" placeholder="Message room…" /><button class="btn btn-primary small">SEND</button></form>
+    </div>
+
+    <div class="touch-controls" id="touchControls">
+      <div class="joystick" id="joystick"><div class="joystick-knob" id="joystickKnob"></div></div>
+      <button class="dash-btn" id="btnDash">DASH</button>
+    </div>
+    <p class="control-hint" id="controlHint">WASD / arrows to move · SPACE to dash</p>
+  </div>
+
+  <div class="modal" id="resultModal" hidden>
+    <div class="modal-card">
+      <div class="result-badge" id="resultBadge">RUN COMPLETE</div>
+      <h2 id="resultTitle">Rewards secured</h2>
+      <div id="resultBody" class="result-body"></div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="resultAgain">PLAY AGAIN</button>
+        <button class="btn btn-ghost" id="resultLobby">LOBBY</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="modal" id="genericModal" hidden>
+  <div class="modal-card">
+    <h3 id="modalTitle">Details</h3>
+    <div id="modalBody"></div>
+    <div class="modal-actions"><button class="btn btn-ghost" id="modalClose">CLOSE</button></div>
+  </div>
+</div>
+
+<div id="toasts" class="toasts" aria-live="polite"></div>
+
+<script src="/socket.io/socket.io.js" defer></script>
+<script src="/js/ball.js" defer></script>
+<script src="/js/game.js" defer></script>
+<script src="/js/app.js" defer></script>
+</body>
+</html>

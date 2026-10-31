@@ -1,10 +1,27 @@
 # BALL ARENA LEGENDS - production image
-FROM node:20-bookworm-slim
+#
+# Alpine (musl) base keeps the runtime OS surface minimal and avoids the
+# Debian 12 glibc/gnutls advisories that have no published fix.
+# Stage 1 compiles the better-sqlite3 native addon; build tooling stays out of
+# the final image.
 
-# better-sqlite3 compiles a native addon, so build tooling is required.
-RUN apt-get update \
- && apt-get install -y --no-install-recommends python3 make g++ ca-certificates \
- && rm -rf /var/lib/apt/lists/*
+FROM node:22-alpine AS deps
+
+WORKDIR /app
+
+# better-sqlite3 ships a C++ addon; build it from source against musl.
+RUN apk add --no-cache python3 make g++
+
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --build-from-source \
+ && npm cache clean --force \
+ && rm -rf /root/.npm /root/.node-gyp /tmp/*
+
+
+FROM node:22-alpine AS runtime
+
+# libstdc++ is required at runtime by the compiled better-sqlite3 addon.
+RUN apk add --no-cache libstdc++
 
 ENV NODE_ENV=production \
     PORT=3000 \
@@ -12,13 +29,14 @@ ENV NODE_ENV=production \
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev && npm cache clean --force
-
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json ./
 COPY server ./server
 COPY public ./public
 
-RUN mkdir -p /app/data/uploads
+RUN mkdir -p /app/data/uploads && chown -R node:node /app
+
+USER node
 
 EXPOSE 3000
 

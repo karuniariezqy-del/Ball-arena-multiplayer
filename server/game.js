@@ -9,6 +9,7 @@ const { levelFromExp } = require('./progression');
 const TICK_MS = 33;
 const SNAPSHOT_MS = 66;
 const MAX_PLAYERS_MULTI = 12;
+const PUBLIC_ROOM_ID = 'arena:public';
 const WORLD = {
   multi: { w: 2800, h: 2000 },
   solo: { w: 2000, h: 1500 },
@@ -939,7 +940,7 @@ class GameServer {
         });
       }
     }
-    if (room.players.size === 0) {
+    if (room.players.size === 0 && room.mode !== 'multi') {
       setTimeout(() => {
         const current = this.rooms.get(room.id);
         if (current && current.players.size === 0) this.rooms.delete(room.id);

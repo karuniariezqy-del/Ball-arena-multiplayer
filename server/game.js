@@ -869,9 +869,11 @@ class GameServer {
 
   roomFor(mode, socket, user, opts = {}) {
     if (mode === 'multi') {
-      let room = this.rooms.get('arena:public');
-      if (!room || room.players.size >= MAX_PLAYERS_MULTI) {
-        room = new Room('multi', { id: `arena:${crypto.randomBytes(3).toString('hex')}` });
+      // One shared public arena: every MULTIPLAYER player must land in the same room
+      // so that positions are actually synchronized between them.
+      let room = this.rooms.get(PUBLIC_ROOM_ID);
+      if (!room || room.status !== 'active' || room.players.size >= MAX_PLAYERS_MULTI) {
+        room = new Room('multi', { id: PUBLIC_ROOM_ID });
         this.rooms.set(room.id, room);
       }
       return room;

@@ -26,7 +26,7 @@ class C {
 
 (async () => {
   const srv = spawn(process.execPath, ['server/index.js'], {
-    cwd: __dirname, env: { ...process.env, PORT: String(PORT), DATA_DIR: dataDir }, stdio: ['ignore', 'pipe', 'pipe'],
+    cwd: path.join(__dirname, '..'), env: { ...process.env, PORT: String(PORT), DATA_DIR: dataDir }, stdio: ['ignore', 'pipe', 'pipe'],
   });
   srv.stdout.on('data', (d) => console.log('[srv]', d.toString().trim().slice(0, 400)));
   srv.stderr.on('data', (d) => console.log('[srv:err]', d.toString().trim().slice(0, 2000)));
